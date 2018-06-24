@@ -132,7 +132,7 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 
 	task_list = []
 
-	for i in range(1,2):
+	for i in range(1, n_features):
 		feature_point = ee.Feature( feature_list.get(i) )
 
 		if source['geometry'] == "point":
