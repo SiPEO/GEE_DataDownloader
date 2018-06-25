@@ -3,10 +3,11 @@
 downloadDirectory: "/sentinel/"
 export_to: bucket
 export_dest: "sentinel2"
+log_file: "gee_download_log.pkl"
 max_tasks: 5
 max_retry: 1
 
-sensors: 
+sensors:
   - name: "COPERNICUS/S2"
     prefix: "S2_CloudFree"
     type: "opt"
@@ -21,7 +22,7 @@ sensors:
     filters_after:
       - CLOUDY_PERCENTAGE: {'gte': 20}
       - CLOUDY_PERCENTAGE: {'lte': 60}
-    
+
   - name: "COPERNICUS/S1_GRD"
     type: "sar"
     prefix: "S1"
