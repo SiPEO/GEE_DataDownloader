@@ -98,7 +98,7 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 			}
 		}
 
-		task_queue.add_task(task_params)
+		task_queue.add_task(task_params, blocking=True)
 
 def export_single_feature(roi=None, type=None, date_range=None, export_params=None):
 	modifiers = None
