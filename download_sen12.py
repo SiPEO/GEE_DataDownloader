@@ -55,6 +55,8 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 	feature_list = feature_list.sort(source['sort_by']).toList(feature_list.size())
 	n_features = feature_list.size().getInfo()
 
+	print("{} features have been loaded".format(n_features))
+
 	task_list = []
 
 	for i in range(1, n_features):
@@ -135,7 +137,7 @@ if __name__ == "__main__":
 	task_queue = GEETaskManager(n_workers=config['max_tasks'], max_retry=config['max_retry'], wake_on_task=True, log_file=config['log_file'])
 
 	for sensor in config['sensors']:
-		for data_list in [config['data_list'][1]]:
+		for data_list in config['data_list']:
 			tasks = process_datasource(task_queue, data_list, sensor, config['export_to'], config['export_dest'])
 
 	print("Waiting for completion...")
