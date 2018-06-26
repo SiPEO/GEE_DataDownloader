@@ -79,7 +79,7 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 			filename_parts = source['name']
 
 		filename = "_".join(sensor['prefix']  + source['name'] + [str(i)])
-		dest_path = "/".join(filename_parts)
+		dest_path = "/".join(filename_parts + [filename])
 
 		export_params = {
 			'bucket': export_dest,
