@@ -39,6 +39,7 @@ data_list:
     geometry: point
     size: 20000
     resolution: 10
+    sort_by: 'name'
     features_src: "ft:19Vexm10pJcAZ8tTVbl4j0HA8w2muyPPz6-cyvdxI"
 
   - name: ['winter','2017']
@@ -47,6 +48,7 @@ data_list:
     geometry: point
     size: 20000
     resolution: 10
+    sort_by: 'name'
     features_src: "ft:1dHi-etD8wtSMPJh-_QT07dKSPO0PE9quSXKCfXeN"
 
   - name: ['spring', '1158']
@@ -55,6 +57,7 @@ data_list:
     geometry: point
     size: 20000
     resolution: 10
+    sort_by: 'name'
     features_src: "ft:1JLPWjSewCd040i_bstDrNrCAvSAaep3i_QRJm-Tb"
 
   - name: ['autumn', '1970']
@@ -63,4 +66,5 @@ data_list:
     geometry: point
     size: 20000
     resolution: 10
+    sort_by: 'name'
     features_src: "ft:1o6ZNS2lkXUiloJ96_UipxR8BWwMoXVnM_Cd4ERHm"

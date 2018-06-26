@@ -52,7 +52,7 @@ def makeImageCollection(sensor, roi, start_date, end_date, modifiers=[]):
 
 def process_datasource(task_queue, source, sensor, export_to, export_dest):
 	feature_list = ee.FeatureCollection(source['features_src'])
-	feature_list = feature_list.sort('system:index').toList(feature_list.size())
+	feature_list = feature_list.sort(source['sort_by']).toList(feature_list.size())
 	n_features = feature_list.size().getInfo()
 
 	task_list = []
