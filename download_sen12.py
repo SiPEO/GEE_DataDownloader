@@ -78,7 +78,7 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 		else:
 			filename_parts = source['name']
 
-		filename = "_".join(sensor['prefix']  + source['name'] + [str(i)])
+		filename = "_".join(source['name'] + [str(i)])
 		dest_path = "/".join(filename_parts + [filename])
 
 		export_params = {
