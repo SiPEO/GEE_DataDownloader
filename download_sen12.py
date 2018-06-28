@@ -66,6 +66,7 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 			feature_point = feature_point.buffer(source['size']).bounds()
 
 		roi = feature_point.geometry()
+		roi = roi.coordinates().getInfo()
 
 		if isinstance(source['name'], str):
 			source['name'] = [source['name']]
@@ -84,7 +85,6 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 		export_params = {
 			'bucket': export_dest,
 			'resolution': source['resolution'],
-			'roi': roi,
 			'filename': filename,
 			'dest_path': dest_path
 		}
@@ -107,7 +107,8 @@ def export_single_feature(roi=None, type=None, date_range=None, export_params=No
 	if sensor['type'].lower() == "opt":
 		modifiers = [sentinel2CloudScore, calcCloudCoverage]
 
-	image_collection = makeImageCollection(sensor, roi, date_range['start_date'], date_range['end_date'], modifiers=modifiers)
+	roi_ee = ee.Geometry.Polygon(roi[0])
+	image_collection = makeImageCollection(sensor, roi_ee, date_range['start_date'], date_range['end_date'], modifiers=modifiers)
 	img = ee.Image(image_collection.mosaic())
 
 	new_params = export_params.copy()
