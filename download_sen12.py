@@ -138,7 +138,7 @@ if __name__ == "__main__":
 	task_queue = GEETaskManager(n_workers=config['max_tasks'], max_retry=config['max_retry'], wake_on_task=True, log_file=config['log_file'], process_timeout=config['task_timeout'])
 
 	for sensor in config['sensors']:
-		for data_list in config['data_list']:
+		for data_list in [config['data_list'][1]]:
 			tasks = process_datasource(task_queue, data_list, sensor, config['export_to'], config['export_dest'])
 
 	print("Waiting for completion...")
