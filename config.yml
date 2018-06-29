@@ -6,6 +6,7 @@ export_dest: "sentinel2"
 log_file: "gee_download_log.pkl"
 max_tasks: 5
 max_retry: 1
+task_timeout: 14400
 
 sensors:
   - name: "COPERNICUS/S2"

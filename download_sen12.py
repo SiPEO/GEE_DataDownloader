@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
 	ee.Initialize()
 
-	task_queue = GEETaskManager(n_workers=config['max_tasks'], max_retry=config['max_retry'], wake_on_task=True, log_file=config['log_file'])
+	task_queue = GEETaskManager(n_workers=config['max_tasks'], max_retry=config['max_retry'], wake_on_task=True, log_file=config['log_file'], process_timeout=config['task_timeout'])
 
 	for sensor in config['sensors']:
 		for data_list in config['data_list']:
