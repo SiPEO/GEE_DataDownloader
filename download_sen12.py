@@ -167,7 +167,7 @@ if __name__ == "__main__":
 		task_log = load_task_log(filename='task_log.json')
 		task_queue.set_task_log(task_log)
 
-	for data_list in [config['data_list'][1]]:
+	for data_list in config['data_list']:
 		for sensor_idx in data_list['sensors']:
 			sensor = config['sensors'][sensor_idx]
 			tasks = process_datasource(task_queue, data_list, sensor, config['export_to'], config['export_dest'])
