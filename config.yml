@@ -42,6 +42,7 @@ data_list:
     resolution: 10
     sort_by: 'name'
     features_src: "ft:19Vexm10pJcAZ8tTVbl4j0HA8w2muyPPz6-cyvdxI"
+    sensors: [0,1,2]
 
   - name: ['winter','2017']
     start_date: '2016-12-01'
@@ -51,6 +52,7 @@ data_list:
     resolution: 10
     sort_by: 'name'
     features_src: "ft:1dHi-etD8wtSMPJh-_QT07dKSPO0PE9quSXKCfXeN"
+    sensors: [0,1,2]
 
   - name: ['spring', '1158']
     start_date: '2017-03-01'
@@ -60,6 +62,7 @@ data_list:
     resolution: 10
     sort_by: 'name'
     features_src: "ft:1JLPWjSewCd040i_bstDrNrCAvSAaep3i_QRJm-Tb"
+    sensors: [0,1,2]
 
   - name: ['autumn', '1970']
     start_date: '2017-09-01'
@@ -69,3 +72,4 @@ data_list:
     resolution: 10
     sort_by: 'name'
     features_src: "ft:1o6ZNS2lkXUiloJ96_UipxR8BWwMoXVnM_Cd4ERHm"
+    sensors: [0,1,2]

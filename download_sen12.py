@@ -1,12 +1,13 @@
 import ee
 import yaml
 import time
+import os
+import json
 from argparse import ArgumentParser
 from utils import clipToROI, exportImageCollectionToGCS, exportImageToGCS, sentinel2CloudScore, calcCloudCoverage
 from utils import GEETaskManager
-import dill
 
-from ee import image
+from gevent.fileobject import FileObjectThread
 
 def makeFilterList(sensor):
 	filters_before = None
@@ -117,6 +118,30 @@ def export_single_feature(roi=None, type=None, date_range=None, export_params=No
 
 	return exportImageToGCS(**new_params)
 
+def _serialise_task_log(task_log):
+	for k,v in task_log.iteritems():
+		task_log[k]['task_def']['action'] = "export_single_feature"
+
+	return task_log
+
+def load_task_log(filename='task_log.json'):
+	with open(filename, 'r') as f:
+		task_log = json.load(f)
+
+	for k, v in task_log.iteritems():
+		task_log[k]['task_def']['action'] = globals()[task_log[k]['task_def']['action']]
+
+	return task_log
+
+def monitor_tasks(task_log):
+	print("SAVING LOG")
+	f_raw = open('task_log.json', 'w')
+	with FileObjectThread(f_raw, 'w') as handle:
+		task_log = _serialise_task_log(task_log)
+		json.dump(task_log, handle)
+
+	f_raw.close()
+
 def load_config(path):
 	with open(path, 'r') as stream:
 		try:
@@ -136,9 +161,15 @@ if __name__ == "__main__":
 	ee.Initialize()
 
 	task_queue = GEETaskManager(n_workers=config['max_tasks'], max_retry=config['max_retry'], wake_on_task=True, log_file=config['log_file'], process_timeout=config['task_timeout'])
+	task_queue.register_monitor(monitor_tasks)
 
-	for sensor in config['sensors']:
-		for data_list in config['data_list']:
+	if os.path.exists('task_log.json'):
+		task_log = load_task_log(filename='task_log.json')
+		task_queue.set_task_log(task_log)
+
+	for data_list in [config['data_list'][1]]:
+		for sensor_idx in data_list['sensors']:
+			sensor = config['sensors'][sensor_idx]
 			tasks = process_datasource(task_queue, data_list, sensor, config['export_to'], config['export_dest'])
 
 	print("Waiting for completion...")
