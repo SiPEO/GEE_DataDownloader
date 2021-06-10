@@ -3,8 +3,9 @@ import yaml
 import time
 import os
 import json
+import time
 from argparse import ArgumentParser
-from utils import clipToROI, exportImageCollectionToGCS, exportImageToGCS, sentinel2CloudScore, calcCloudCoverage
+from utils import clipToROI, exportImageCollectionToGCS, exportImageToGCS, sentinel2CloudScore, calcCloudCoverage, inject_B10, sentinel2ProjectShadows, computeQualityScore, mergeCollection
 from utils import GEETaskManager
 
 from gevent.fileobject import FileObjectThread
@@ -16,9 +17,9 @@ def makeFilterList(sensor):
 	def _build_filters(filter_list):
 		filters = []
 		for f in filter_list:
-			key = f.keys()[0]
-			op = f.values()[0].keys()[0]
-			val = f.values()[0].values()[0]
+			key = list(f.keys())[0]
+			op = list(list(f.values())[0].keys())[0]
+			val = list(list(f.values())[0].values())[0]
 			filters.append(getattr(ee.Filter, op)(key, val))
 
 		return filters
@@ -33,45 +34,59 @@ def makeFilterList(sensor):
 
 def makeImageCollection(sensor, roi, start_date, end_date, modifiers=[]):
 	filters_before, filters_after = makeFilterList(sensor)
+	print(modifiers)
 
 	collection = ee.ImageCollection(sensor['name']) \
 				.filterDate(ee.Date(start_date), ee.Date(end_date)) \
 				.filterBounds(roi) \
 				.map( lambda x: clipToROI(x, ee.Geometry(roi)) )
+    
+	print("size of collection:",collection.size().getInfo())
 
 	if filters_before is not None:
 		collection = collection.filter( filters_before )
 
 	if modifiers and len(modifiers) > 0:
 		for m in modifiers:
+			print(f'Applying modifier {m}')
 			collection = collection.map(m)
 
 	if filters_after:
 		collection = collection.filter( filters_after )
 
-	return collection.select(sensor['bands'])
+	return collection
 
-def process_datasource(task_queue, source, sensor, export_to, export_dest):
-	feature_list = ee.FeatureCollection(source['features_src'])
+def process_datasource(source, sensor, export_folder, feature_list = None, pre_mosaic_sort='CLOUDY_PERCENTAGE'):
+# 	feature_list = ee.FeatureCollection(source['features_src'])
 	feature_list = feature_list.sort(source['sort_by']).toList(feature_list.size())
 	n_features = feature_list.size().getInfo()
 
 	print("{} features have been loaded".format(n_features))
 
-	task_list = []
+	#task_list = []
 
-	for i in range(1, n_features):
+	exports = []
+
+	### ERROR? ###
+	## Originally this was range(1, n_features), but we're pretty sure
+	## that should be 0 so we changed it.
+	for i in range(0, n_features):
 		feature_point = ee.Feature( feature_list.get(i) )
 
-		if source['geometry'] == "point":
-			feature_point = feature_point.buffer(source['size']).bounds()
+		#if source['geometry'] == "point":
+		#	feature_point = feature_point.buffer(source['size']).bounds()
 
 		roi = feature_point.geometry()
 		roi = roi.coordinates().getInfo()
 
+		### should be done outside the for loop ###
 		if isinstance(source['name'], str):
 			source['name'] = [source['name']]
 
+		### ERROR? ###
+		## The following conditional should be moved under
+		## the conditional after it, or else we'll error out
+		## if sensor doesn't have a "prefix" key.
 		if isinstance(sensor['prefix'], str):
 			sensor['prefix'] = [sensor['prefix']]
 
@@ -79,47 +94,80 @@ def process_datasource(task_queue, source, sensor, export_to, export_dest):
 			filename_parts = sensor['prefix'] + source['name']
 		else:
 			filename_parts = source['name']
+		### end of part that should be done outside the for loop ###
 
-		filename = "_".join(source['name'] + [str(i)])
+		time_stamp = "_".join(time.ctime().split(" ")[1:])
+		filename = "_".join([str(i + 1)] + source['name'] + [time_stamp])
+		print("processing ",filename)
 		dest_path = "/".join(filename_parts + [filename])
 
 		export_params = {
-			'bucket': export_dest,
+			'bucket': export_folder,
 			'resolution': source['resolution'],
 			'filename': filename,
 			'dest_path': dest_path
 		}
 
-		task_params = {
-			'action': export_single_feature,
-			'id': "_".join(filename_parts + [str(i)]), # This must be unique per task, to allow to track retries
-			'kwargs': {
-				'roi': roi,
-				'export_params': export_params,
-				'type': sensor['type'],
-				'date_range': {'start_date': source['start_date'], 'end_date': source['end_date']}
-			}
-		}
+		# task_params = {
+		# 	'action': export_single_feature,
+		# 	'id': "_".join(filename_parts + [str(i)]), # This must be unique per task, to allow to track retries
+		# 	'kwargs': {
+		# 		'roi': roi,
+		# 		'export_params': export_params,
+		# 		'sensor': sensor,
+		# 		'date_range': {'start_date': source['start_date'], 'end_date': source['end_date'],
+		# 		'sort_by': pre_mosaic_sort}
+		# 	}
+		# }
 
-		task_queue.add_task(task_params, blocking=True)
+		# task_queue.add_task(task_params, blocking=True)
 
-def export_single_feature(roi=None, type=None, date_range=None, export_params=None):
-	modifiers = None
+		export = export_single_feature(
+			roi=roi,
+			sensor=sensor,
+			date_range={'start_date': source['start_date'], 'end_date': source['end_date']},
+			export_params=export_params,
+			sort_by=pre_mosaic_sort
+		)
+
+		exports.append(export)
+
+	return exports
+
+def export_single_feature(roi=None, sensor=None, date_range=None, export_params=None, sort_by='CLOUDY_PERCENTAGE'):
+	modifiers = []
+	if sensor['name'].lower() == "copernicus/s2_sr":
+		print('Inject B10')
+		modifiers.append(inject_B10)
 	if sensor['type'].lower() == "opt":
-		modifiers = [sentinel2CloudScore, calcCloudCoverage]
+		#print(sensor['type'])
+		modifiers += [sentinel2CloudScore, calcCloudCoverage, sentinel2ProjectShadows, computeQualityScore]
+		print(modifiers)
+                    
 
+	#print('Modifiers:', modifiers)
 	roi_ee = ee.Geometry.Polygon(roi[0])
 	image_collection = makeImageCollection(sensor, roi_ee, date_range['start_date'], date_range['end_date'], modifiers=modifiers)
-	img = ee.Image(image_collection.mosaic())
+	## sort was not in the original version
+	image_collection = image_collection.sort(sort_by)
+	## below line was in the original verson;
+	## changing to the JS version
+	## img = image_collection.mosaic().clip(roi_ee)
+	cloudFree = mergeCollection(image_collection).clip(roi_ee)
+	cloudFree = cloudFree.reproject('EPSG:4326', None, 10)
+	### Do we need to mosaic it now???
+# 	print('cloudFree info:', cloudFree.getInfo())
+	#print('Mosaic type:', type(img))
 
 	new_params = export_params.copy()
-	new_params['img'] = img
+	new_params['img'] = cloudFree
 	new_params['roi'] = roi
-
+	new_params['sensor_name'] = sensor['name'].lower()
+    
 	return exportImageToGCS(**new_params)
 
 def _serialise_task_log(task_log):
-	for k,v in task_log.iteritems():
+	for k,v in task_log.items():
 		task_log[k]['task_def']['action'] = "export_single_feature"
 
 	return task_log
@@ -128,7 +176,7 @@ def load_task_log(filename='task_log.json'):
 	with open(filename, 'r') as f:
 		task_log = json.load(f)
 
-	for k, v in task_log.iteritems():
+	for k, v in task_log.items():
 		task_log[k]['task_def']['action'] = globals()[task_log[k]['task_def']['action']]
 
 	return task_log
@@ -142,12 +190,16 @@ def monitor_tasks(task_log):
 
 	f_raw.close()
 
-def load_config(path):
-	with open(path, 'r') as stream:
-		try:
-			return yaml.load(stream)
-		except yaml.YAMLError as exc:
-			print(exc)
+# def load_config(path):
+# 	with open(path, 'r') as stream:
+# 		try:
+# 			return yaml.load(stream)
+# 		except yaml.YAMLError as exc:
+# 			print(exc)
+
+def load_config(config_file):
+    stream = open(config_file, 'r') 
+    return yaml.load(stream)
 
 if __name__ == "__main__":
 	parser = ArgumentParser()
@@ -167,10 +219,11 @@ if __name__ == "__main__":
 		task_log = load_task_log(filename='task_log.json')
 		task_queue.set_task_log(task_log)
 
+	pre_mosaic_sort = config['pre_mosaic_sort']
 	for data_list in config['data_list']:
 		for sensor_idx in data_list['sensors']:
 			sensor = config['sensors'][sensor_idx]
-			tasks = process_datasource(task_queue, data_list, sensor, config['export_to'], config['export_dest'])
+			tasks = process_datasource(task_queue, data_list, sensor, config['export_to'], config['export_dest'], pre_mosaic_sort)
 
 	print("Waiting for completion...")
 	task_queue.wait_till_done()
