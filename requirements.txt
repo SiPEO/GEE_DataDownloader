@@ -1,5 +1,5 @@
 earthengine_api==0.1.135
-gevent==1.2.2
+gevent==23.9.1
 dill==0.2.8.2
 ee==0.4
 PyYAML==5.4
